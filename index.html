@@ -2,10 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ソフトクリームの機械が壊れて全然止まらない v6</title>
+    <title>ソフトクリーム・パニック・メーカー v7</title>
     <style>
         :root { --bg-color: #f0f2f5; --axis-color: #333; }
-        body { margin: 0; font-family: sans-serif; overflow: hidden; background: var(--bg-color); }
+        body { margin: 0; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; overflow: hidden; background: var(--bg-color); }
         
         /* 登録画面 */
         #setup-screen {
@@ -14,13 +14,12 @@
             box-sizing: border-box; overflow-y: auto;
         }
 
-        /* プレビュー表示用スタイル */
         .input-row {
             display: flex; align-items: center; gap: 10px; padding: 8px;
             border: 1px solid #eee; border-radius: 5px; background: #fafafa;
         }
         .preview-box {
-            width: 40px; height: 40px; border: 1px solid #ccc; background: #ddd;
+            width: 45px; height: 45px; border: 1px solid #ccc; background: #ddd;
             display: flex; align-items: center; justify-content: center; overflow: hidden;
             font-size: 10px; color: #666; flex-shrink: 0;
         }
@@ -28,322 +27,82 @@
 
         /* メイン画面構成 */
         #main-screen { display: none; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
-        #content-area { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 60px); }
+        #content-area { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 80px); }
 
-        /* 出力対象エリア (ヘッダー + XY平面) */
+        /* 出力対象エリア */
         #export-container { flex: 1; display: flex; flex-direction: column; background: white; overflow: hidden; }
 
-        /* --- ヘッダーエリア (タイトル専用スペース) --- */
+        /* ヘッダーエリア */
         #chart-header {
-            height: 60px; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px; border-bottom: 2px solid #ddd; background: #fff; flex-shrink: 0;
+            height: 70px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; border-bottom: 3px solid #333; background: #fff; flex-shrink: 0;
         }
-        .chart-title { font-size: 1.8rem; font-weight: bold; color: #1e3a8a; }
-        .chart-date { font-size: 1.2rem; color: #555; font-weight: bold; }
+        .chart-title { font-size: 1.8rem; font-weight: bold; color: #000; }
+        .chart-date { font-size: 1.1rem; color: #333; font-weight: bold; }
 
-        /* --- XY平面 (グラフエリア) --- */
+        /* XY平面 */
         #canvas-container { flex: 1; position: relative; cursor: crosshair; overflow: hidden; }
         
-        /* 軸と矢印 */
         .axis { position: absolute; background: var(--axis-color); pointer-events: none; }
-        .axis-h { width: 100%; height: 3px; top: 50%; left: 0; transform: translateY(-50%); }
-        .axis-v { width: 3px; height: 100%; top: 0; left: 50%; transform: translateX(-50%); }
+        .axis-h { width: 100%; height: 4px; top: 50%; left: 0; transform: translateY(-50%); }
+        .axis-v { width: 4px; height: 100%; top: 0; left: 50%; transform: translateX(-50%); }
         .arrow { position: absolute; width: 0; height: 0; border-style: solid; pointer-events: none; }
-        .arrow-up { top: 0; left: 50%; transform: translateX(-50%); border-width: 0 9px 18px 9px; border-color: transparent transparent var(--axis-color) transparent; }
-        .arrow-down { bottom: 0; left: 50%; transform: translateX(-50%); border-width: 18px 9px 0 9px; border-color: var(--axis-color) transparent transparent transparent; }
-        .arrow-right { right: 0; top: 50%; transform: translateY(-50%); border-width: 9px 0 9px 18px; border-color: transparent transparent transparent var(--axis-color); }
-        .arrow-left { left: 0; top: 50%; transform: translateY(-50%); border-width: 9px 18px 9px 0; border-color: transparent var(--axis-color) transparent transparent; }
+        .arrow-up { top: 0; left: 50%; transform: translateX(-50%); border-width: 0 12px 24px 12px; border-color: transparent transparent var(--axis-color) transparent; }
+        .arrow-down { bottom: 0; left: 50%; transform: translateX(-50%); border-width: 24px 12px 0 12px; border-color: var(--axis-color) transparent transparent transparent; }
+        .arrow-right { right: 0; top: 50%; transform: translateY(-50%); border-width: 12px 0 12px 24px; border-color: transparent transparent transparent var(--axis-color); }
+        .arrow-left { left: 0; top: 50%; transform: translateY(-50%); border-width: 12px 24px 12px 0; border-color: transparent var(--axis-color) transparent transparent; }
 
-        /* 軸ラベル */
         .label { 
             position: absolute; font-weight: bold; font-size: 1.6rem; pointer-events: none; 
-            color: #333; background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 5px; 
-            z-index: 10;
+            color: #fff; background: #333; padding: 6px 12px; border-radius: 6px; z-index: 10;
         }
 
-        /* サイドバー */
-        #sidebar { width: 200px; background: #eee; border-left: 1px solid #ccc; overflow-y: auto; padding: 10px; box-sizing: border-box; flex-shrink: 0; }
-        #sidebar h3 { font-size: 16px; margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
-
-        /* フッター */
-        #footer { height: 60px; background: #333; display: flex; justify-content: center; align-items: center; gap: 20px; z-index: 500; }
+        #sidebar { width: 220px; background: #f8f9fa; border-left: 1px solid #ccc; overflow-y: auto; padding: 10px; box-sizing: border-box; flex-shrink: 0; }
         
-        /* アイテム */
-        .draggable-item { cursor: grab; margin-bottom: 15px; border: 1px solid #ddd; background: #fff; padding: 5px; }
+        /* フッター・操作パネル */
+        #footer { height: 80px; background: #222; display: flex; justify-content: center; align-items: center; gap: 15px; z-index: 500; color: white; }
+        .control-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid #444; padding-right: 15px; }
+
+        .draggable-item { cursor: grab; margin-bottom: 15px; border: 1px solid #ddd; background: #fff; padding: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .placed-item { position: absolute; cursor: move; text-align: center; user-select: none; touch-action: none; z-index: 20; }
-        .placed-item img { display: block; pointer-events: none; box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
-        
-        /* アイテム名 */
-        .item-name { 
-            font-size: 14px; margin-top: 4px; font-weight: bold; 
-            background: rgba(255,255,255,1); word-break: break-all; 
-            border: 1px solid #ccc; padding: 2px; border-radius: 2px;
-            box-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-        }
+        .placed-item img { display: block; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); border: 2px solid #fff; width: 100%; height: auto; }
+        .item-name { font-size: 14px; margin-top: 5px; font-weight: bold; background: white; border: 2px solid #333; padding: 2px 6px; border-radius: 4px; display: inline-block; color: #000; }
 
-        button { padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; font-size: 14px; }
+        button { padding: 10px 18px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
         .btn-main { background: #ff4757; color: white; }
-        .btn-sub { background: #2f3542; color: white; }
-        input[type="text"] { padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+        .btn-x { background: #000; color: white; border: 1px solid #444; }
+        .btn-sub { background: #555; color: white; }
+        select { padding: 8px; border-radius: 4px; border: none; font-weight: bold; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
 <div id="setup-screen">
-    <h1>🍦 画像と名前の登録 (最大50個)</h1>
-    <div id="input-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 1000px;"></div>
-    <button class="btn-main" onclick="startApp()" style="margin:30px 0;">配置画面へ進む</button>
+    <h1 style="font-size: 2rem; color: #333;">🍦 ソフトクリーム・パニック・メーカー</h1>
+    <p>画像を選んで名前を入力してください（最大50個）</p>
+    <div id="input-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 1100px;"></div>
+    <button class="btn-main" onclick="startApp()" style="margin:40px 0; width: 300px; font-size: 1.2rem;">配置画面へ進む</button>
 </div>
 
-<div id="main-screen" style="display:none;">
+<div id="main-screen">
     <div id="content-area">
         <div id="export-container">
             <div id="chart-header">
                 <div class="chart-title">ソフトクリームの機械が壊れて全然止まらない</div>
                 <div class="chart-date" id="current-date"></div>
             </div>
-            
             <div id="canvas-container">
-                <div class="axis axis-h"></div>
-                <div class="axis axis-v"></div>
-                <div class="arrow arrow-up"></div>
-                <div class="arrow arrow-down"></div>
-                <div class="arrow arrow-right"></div>
-                <div class="arrow arrow-left"></div>
-                
-                <div class="label" style="top: 30px; left: 52%;">巻き続ける</div>
-                <div class="label" style="bottom: 30px; left: 52%;">放置</div>
-                <div class="label" style="top: 43%; right: 30px;">パニック</div>
-                <div class="label" style="top: 43%; left: 30px;">平常心</div>
+                <div class="axis axis-h"></div><div class="axis axis-v"></div>
+                <div class="arrow arrow-up"></div><div class="arrow arrow-down"></div>
+                <div class="arrow arrow-right"></div><div class="arrow arrow-left"></div>
+                <div class="label" style="top: 40px; left: 52%;">巻き続ける</div>
+                <div class="label" style="bottom: 40px; left: 52%;">放置</div>
+                <div class="label" style="top: 42%; right: 40px;">パニック</div>
+                <div class="label" style="top: 42%; left: 40px;">平常心</div>
                 <div id="drop-zone" style="width:100%; height:100%; position:relative;"></div>
             </div>
         </div>
-
-        <div id="sidebar">
-            <h3>未使用リスト</h3>
-            <div id="sidebar-content"></div>
-        </div>
+        <div id="sidebar"><h3>未使用リスト</h3><div id="sidebar-content"></div></div>
     </div>
-    <div id="footer">
-        <button class="btn-main" onclick="exportImage()">画像出力（保存）</button>
-        <button class="btn-sub" onclick="location.reload()">最初からやり直す</button>
-    </div>
-</div>
-
-<script>
-    const setupScreen = document.getElementById('setup-screen');
-    const mainScreen = document.getElementById('main-screen');
-    const inputFields = document.getElementById('input-fields');
-    const sidebarContent = document.getElementById('sidebar-content');
-    const dropZone = document.getElementById('drop-zone');
-
-    let items = [];
-    let activeItem = null;
-    let offset = { x: 0, y: 0 };
-
-    // 入力行の生成
-    for (let i = 0; i < 50; i++) {
-        const div = document.createElement('div');
-        div.className = "input-row";
-        div.innerHTML = `
-            <div class="preview-box" id="prev-box-${i}">No img</div>
-            <div style="display:flex; flex-direction:column; gap:2px;">
-                <input type="file" accept="image/*" id="file-${i}" onchange="previewFile(${i})" style="width:160px; font-size:10px;">
-                <input type="text" placeholder="URL" id="url-${i}" onchange="previewUrl(${i})" style="width:154px; font-size:10px;">
-                <input type="text" maxlength="10" placeholder="名前" id="name-${i}" style="width:154px;">
-            </div>
-        `;
-        inputFields.appendChild(div);
-    }
-
-    // プレビュー表示関数 (ファイル)
-    async function previewFile(index) {
-        const file = document.getElementById(`file-${index}`).files[0];
-        const box = document.getElementById(`prev-box-${index}`);
-        if (file) {
-            const src = await toBase64(file);
-            box.innerHTML = `<img src="${src}">`;
-        }
-    }
-
-    // プレビュー表示関数 (URL)
-    function previewUrl(index) {
-        const url = document.getElementById(`url-${index}`).value;
-        const box = document.getElementById(`prev-box-${index}`);
-        if (url) {
-            box.innerHTML = `<img src="${url}" onerror="this.parentElement.innerHTML='Error'">`;
-        }
-    }
-
-    // 現在の日付を取得して表示
-    function setTodayDate() {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
-        document.getElementById('current-date').innerText = `作成日: ${y}/${m}/${d}`;
-    }
-
-    async function startApp() {
-        items = [];
-        for (let i = 0; i < 50; i++) {
-            const file = document.getElementById(`file-${i}`).files[0];
-            const url = document.getElementById(`url-${i}`).value;
-            const name = document.getElementById(`name-${i}`).value;
-            let src = file ? await toBase64(file) : url;
-            if (src) items.push({ id: i, src, name, placed: false, element: null });
-        }
-        if (items.length === 0) return alert("画像を登録してください");
-        setupScreen.style.display = 'none';
-        mainScreen.style.display = 'flex';
-        setTodayDate(); // 日付を設定
-        renderSidebar();
-    }
-
-    function toBase64(file) {
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    function calculateSize(w, h) {
-        let tw = (w / h) * 200;
-        let th = 200;
-        if (tw > 150) { tw = 150; th = (h / w) * 150; }
-        return { w: tw, h: th };
-    }
-
-    function renderSidebar() {
-        sidebarContent.innerHTML = "";
-        items.filter(item => !item.placed).forEach(item => {
-            const container = document.createElement('div');
-            container.className = "draggable-item";
-            const img = new Image();
-            img.src = item.src;
-            img.style.width = "100%";
-            container.appendChild(img);
-            if(item.name) {
-                const n = document.createElement('div');
-                n.innerText = item.name;
-                n.style.fontSize = "12px"; n.style.textAlign = "center"; n.style.marginTop = "2px";
-                container.appendChild(n);
-            }
-            container.onmousedown = (e) => initDrag(e, item, true);
-            container.ontouchstart = (e) => initDrag(e, item, true);
-            sidebarContent.appendChild(container);
-        });
-    }
-
-    function initDrag(e, item, isNew) {
-        e.preventDefault();
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-
-        if (isNew) {
-            const tempImg = new Image();
-            tempImg.src = item.src;
-            tempImg.onload = () => {
-                const size = calculateSize(tempImg.width, tempImg.height);
-                createPlacedElement(item, clientX, clientY, size);
-                startMoving(e, item.element);
-            };
-        } else {
-            startMoving(e, item.element);
-        }
-    }
-
-    function createPlacedElement(item, x, y, size) {
-        const div = document.createElement('div');
-        div.className = "placed-item";
-        div.style.width = size.w + "px";
-        
-        const img = new Image();
-        img.src = item.src;
-        img.style.width = size.w + "px";
-        img.style.height = size.h + "px";
-
-        const nameSpan = document.createElement('div');
-        nameSpan.className = "item-name";
-        nameSpan.innerText = item.name || "";
-
-        div.appendChild(img);
-        div.appendChild(nameSpan);
-        
-        div.oncontextmenu = (e) => {
-            e.preventDefault();
-            item.placed = false;
-            dropZone.removeChild(div);
-            renderSidebar();
-        };
-
-        div.onmousedown = (e) => startMoving(e, div);
-        div.ontouchstart = (e) => startMoving(e, div);
-
-        const rect = dropZone.getBoundingClientRect();
-        div.style.left = (x - rect.left - size.w/2) + "px";
-        div.style.top = (y - rect.top - size.h/2) + "px";
-
-        item.placed = true;
-        item.element = div;
-        dropZone.appendChild(div);
-        renderSidebar();
-    }
-
-    function startMoving(e, el) {
-        activeItem = el;
-        // z-indexの制御: 動かしているものを常に最前面に
-        let maxZ = 20;
-        document.querySelectorAll('.placed-item').forEach(item => {
-            const z = parseInt(item.style.zIndex) || 20;
-            if (z > maxZ) maxZ = z;
-        });
-        el.style.zIndex = maxZ + 1;
-        
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        const rect = el.getBoundingClientRect();
-        offset.x = clientX - rect.left;
-        offset.y = clientY - rect.top;
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('touchmove', onMove, {passive: false});
-        document.addEventListener('mouseup', onStop);
-        document.addEventListener('touchend', onStop);
-    }
-
-    function onMove(e) {
-        if (!activeItem) return;
-        e.preventDefault();
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
-        const rect = dropZone.getBoundingClientRect();
-        activeItem.style.left = (clientX - rect.left - offset.x) + "px";
-        activeItem.style.top = (clientY - rect.top - offset.y) + "px";
-    }
-
-    function onStop() {
-        activeItem = null;
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('touchmove', onMove);
-    }
-
-    function exportImage() {
-        const btn = event.target;
-        btn.innerText = "生成中...";
-        // XY平面だけでなく、ヘッダーも含めた親コンテナをキャプチャ
-        html2canvas(document.getElementById('export-container'), {
-            useCORS: true, backgroundColor: "#ffffff", scale: 2
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'softcream-panic-map.png';
-            link.href = canvas.toDataURL("image/png");
-            link.click();
-            btn.innerText = "画像出力（保存）";
-        });
-    }
-</script>
-</body>
-</html>
+    <div
