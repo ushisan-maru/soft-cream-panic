@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ソフトクリーム・パニック・メーカー v8</title>
+    <title>ソフトクリーム・パニック・メーカー v9</title>
     <style>
         :root { --bg-color: #f0f2f5; --axis-color: #333; }
         body { margin: 0; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; overflow: hidden; background: var(--bg-color); }
@@ -63,7 +63,13 @@
         .draggable-item { cursor: grab; margin-bottom: 15px; border: 1px solid #ddd; background: #fff; padding: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .placed-item { position: absolute; cursor: move; text-align: center; user-select: none; touch-action: none; z-index: 20; }
         .placed-item img { display: block; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); border: 2px solid #fff; width: 100%; height: auto; }
-        .item-name { font-size: 14px; margin-top: 5px; font-weight: bold; background: white; border: 2px solid #333; padding: 2px 6px; border-radius: 4px; display: inline-block; color: #000; }
+        
+        /* 名前のスタイル（枠なし・透明をデフォルトにし、中身があるときだけ枠をつける） */
+        .item-name { 
+            font-size: 14px; margin-top: 5px; font-weight: bold; background: white; 
+            padding: 2px 6px; border-radius: 4px; display: inline-block; color: #000; 
+        }
+        .has-name { border: 2px solid #333; } /* 名前がある時のみ適用 */
 
         button { padding: 8px 15px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; transition: 0.2s; }
         .btn-main { background: #ff4757; color: white; }
@@ -148,7 +154,9 @@
         const baseW = item.baseSize.w;
         item.element.style.width = (baseW * currentScale) + "px";
         const nameLabel = item.element.querySelector('.item-name');
-        nameLabel.style.fontSize = Math.max(10, 14 * currentScale) + "px";
+        if(item.name) {
+            nameLabel.style.fontSize = Math.max(10, 14 * currentScale) + "px";
+        }
     }
 
     function resetPlacement() {
@@ -163,12 +171,31 @@
         renderSidebar();
     }
 
+    // 全データをクリアして最初の画面へ戻る
     function backToSetup() {
-        if(!confirm("現在の配置が消えますが、画像選択画面に戻りますか？")) return;
+        if(!confirm("すべての入力データと配置を消去して画像選択に戻りますか？")) return;
+        
+        // 1. プログラム内の配列をリセット
+        items = [];
+        
+        // 2. 配置済みの画像を削除
+        dropZone.innerHTML = "";
+        
+        // 3. 入力フォームとプレビューをリセット
+        for (let i = 0; i < 50; i++) {
+            document.getElementById(`file-${i}`).value = "";
+            document.getElementById(`url-${i}`).value = "";
+            document.getElementById(`name-${i}`).value = "";
+            document.getElementById(`prev-box-${i}`).innerHTML = "No img";
+        }
+        
+        // 4. 画面切り替え
         mainScreen.style.display = 'none';
         setupScreen.style.display = 'flex';
+        renderSidebar();
     }
 
+    // 入力行生成
     for (let i = 0; i < 50; i++) {
         const div = document.createElement('div');
         div.className = "input-row";
@@ -243,7 +270,17 @@
         const div = document.createElement('div');
         div.className = "placed-item";
         const img = new Image(); img.src = item.src;
-        const nameSpan = document.createElement('div'); nameSpan.className = "item-name"; nameSpan.innerText = item.name || "";
+        
+        const nameSpan = document.createElement('div');
+        nameSpan.className = "item-name";
+        // 名前がある時だけクラスを追加して枠を出し、テキストを入れる
+        if(item.name && item.name.trim() !== "") {
+            nameSpan.innerText = item.name;
+            nameSpan.classList.add('has-name');
+        } else {
+            nameSpan.style.display = "none";
+        }
+        
         div.appendChild(img); div.appendChild(nameSpan);
         item.element = div;
         applyScaleToElement(item);
@@ -279,8 +316,6 @@
         const r = dropZone.getBoundingClientRect();
         activeItem.style.left = (cx - r.left - offset.x) + "px";
         activeItem.style.top = (cy - r.top - offset.y) + "px";
-
-        // サイドバーの上に来たら色を変える
         const sRect = sidebar.getBoundingClientRect();
         if (cx > sRect.left) sidebar.classList.add('drag-over');
         else sidebar.classList.remove('drag-over');
@@ -290,15 +325,12 @@
         if (!activeItem) return;
         const cx = e.type.includes('touch') ? e.changedTouches[0].clientX : e.clientX;
         const sRect = sidebar.getBoundingClientRect();
-
-        // サイドバー領域内で離したら回収
         if (cx > sRect.left && activeItemData) {
             dropZone.removeChild(activeItem);
             activeItemData.placed = false;
             activeItemData.element = null;
             renderSidebar();
         }
-
         sidebar.classList.remove('drag-over');
         activeItem = null; activeItemData = null;
         document.removeEventListener('mousemove', onMove);
