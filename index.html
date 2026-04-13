@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>ソフトクリーム・パニック・メーカー v7</title>
+    <title>ソフトクリーム・パニック・メーカー v8</title>
     <style>
         :root { --bg-color: #f0f2f5; --axis-color: #333; }
         body { margin: 0; font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; overflow: hidden; background: var(--bg-color); }
@@ -29,10 +29,8 @@
         #main-screen { display: none; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
         #content-area { display: flex; flex: 1; position: relative; overflow: hidden; height: calc(100vh - 80px); }
 
-        /* 出力対象エリア */
         #export-container { flex: 1; display: flex; flex-direction: column; background: white; overflow: hidden; }
 
-        /* ヘッダーエリア */
         #chart-header {
             height: 70px; display: flex; align-items: center; justify-content: space-between;
             padding: 0 30px; border-bottom: 3px solid #333; background: #fff; flex-shrink: 0;
@@ -40,7 +38,6 @@
         .chart-title { font-size: 1.8rem; font-weight: bold; color: #000; }
         .chart-date { font-size: 1.1rem; color: #333; font-weight: bold; }
 
-        /* XY平面 */
         #canvas-container { flex: 1; position: relative; cursor: crosshair; overflow: hidden; }
         
         .axis { position: absolute; background: var(--axis-color); pointer-events: none; }
@@ -57,35 +54,36 @@
             color: #fff; background: #333; padding: 6px 12px; border-radius: 6px; z-index: 10;
         }
 
-        #sidebar { width: 220px; background: #f8f9fa; border-left: 1px solid #ccc; overflow-y: auto; padding: 10px; box-sizing: border-box; flex-shrink: 0; }
+        #sidebar { width: 220px; background: #f8f9fa; border-left: 2px solid #ccc; overflow-y: auto; padding: 10px; box-sizing: border-box; flex-shrink: 0; transition: background 0.3s; }
+        #sidebar.drag-over { background: #e3f2fd; border-left: 2px dashed #2196f3; }
         
-        /* フッター・操作パネル */
-        #footer { height: 80px; background: #222; display: flex; justify-content: center; align-items: center; gap: 15px; z-index: 500; color: white; }
-        .control-group { display: flex; align-items: center; gap: 8px; border-right: 1px solid #444; padding-right: 15px; }
+        #footer { height: 80px; background: #222; display: flex; justify-content: center; align-items: center; gap: 10px; z-index: 500; color: white; padding: 0 10px; }
+        .control-group { display: flex; align-items: center; gap: 5px; border-right: 1px solid #444; padding-right: 10px; }
 
         .draggable-item { cursor: grab; margin-bottom: 15px; border: 1px solid #ddd; background: #fff; padding: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.1); }
         .placed-item { position: absolute; cursor: move; text-align: center; user-select: none; touch-action: none; z-index: 20; }
         .placed-item img { display: block; pointer-events: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); border: 2px solid #fff; width: 100%; height: auto; }
         .item-name { font-size: 14px; margin-top: 5px; font-weight: bold; background: white; border: 2px solid #333; padding: 2px 6px; border-radius: 4px; display: inline-block; color: #000; }
 
-        button { padding: 10px 18px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        button { padding: 8px 15px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 13px; transition: 0.2s; }
         .btn-main { background: #ff4757; color: white; }
         .btn-x { background: #000; color: white; border: 1px solid #444; }
         .btn-sub { background: #555; color: white; }
-        select { padding: 8px; border-radius: 4px; border: none; font-weight: bold; }
+        .btn-reset { background: #ffa502; color: white; }
+        select { padding: 5px; border-radius: 4px; border: none; font-weight: bold; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
 <div id="setup-screen">
-    <h1 style="font-size: 2rem; color: #333;">🍦 ソフトクリーム・パニック・メーカー</h1>
-    <p>画像を選んで名前を入力してください（最大50個）</p>
+    <h1 style="font-size: 1.8rem; color: #333;">🍦 ソフトクリーム・パニック・メーカー</h1>
+    <p>画像と名前を登録（最大50個）</p>
     <div id="input-fields" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 1100px;"></div>
-    <button class="btn-main" onclick="startApp()" style="margin:40px 0; width: 300px; font-size: 1.2rem;">配置画面へ進む</button>
+    <button class="btn-main" onclick="startApp()" style="margin:30px 0; width: 250px; font-size: 1.1rem;">配置画面へ進む</button>
 </div>
 
-<div id="main-screen">
+<div id="main-screen" style="display:none;">
     <div id="content-area">
         <div id="export-container">
             <div id="chart-header">
@@ -103,18 +101,20 @@
                 <div id="drop-zone" style="width:100%; height:100%; position:relative;"></div>
             </div>
         </div>
-        <div id="sidebar"><h3>未使用リスト</h3><div id="sidebar-content"></div></div>
+        <div id="sidebar">
+            <h3 style="font-size: 14px; margin-top: 0;">未使用リスト</h3>
+            <div id="sidebar-content"></div>
+        </div>
     </div>
     <div id="footer">
         <div class="control-group">
-            <span>画像縮小率:</span>
-            <select id="size-selector" onchange="updateImageSizes()">
-                </select>
-            <button class="btn-sub" onclick="resetImageSize()" style="padding: 8px 12px; font-size: 12px;">100%にリセット</button>
+            <span style="font-size: 12px;">縮小率:</span>
+            <select id="size-selector" onchange="updateImageSizes()"></select>
         </div>
+        <button class="btn-reset" onclick="resetPlacement()">配置リセット</button>
+        <button class="btn-sub" onclick="backToSetup()">画像選択に戻る</button>
         <button class="btn-main" onclick="exportImage()">画像保存</button>
-        <button class="btn-x" onclick="shareOnX()">Xで共有</button>
-        <button class="btn-sub" onclick="location.reload()">最初から</button>
+        <button class="btn-x" onclick="shareOnX()">X共有</button>
     </div>
 </div>
 
@@ -122,48 +122,52 @@
     const setupScreen = document.getElementById('setup-screen');
     const mainScreen = document.getElementById('main-screen');
     const inputFields = document.getElementById('input-fields');
+    const sidebar = document.getElementById('sidebar');
     const sidebarContent = document.getElementById('sidebar-content');
     const dropZone = document.getElementById('drop-zone');
     const sizeSelector = document.getElementById('size-selector');
 
     let items = [];
     let activeItem = null;
+    let activeItemData = null;
     let offset = { x: 0, y: 0 };
-    let currentScale = 1.0; // 現在の縮小率
+    let currentScale = 1.0;
 
-    // 縮小率プルダウンの生成 (10% to 100%, 5% steps)
     for (let i = 100; i >= 10; i -= 5) {
         const opt = document.createElement('option');
-        opt.value = i / 100;
-        opt.innerText = i + "%";
+        opt.value = i / 100; opt.innerText = i + "%";
         sizeSelector.appendChild(opt);
     }
 
-    // 縮小率の更新処理
     function updateImageSizes() {
         currentScale = parseFloat(sizeSelector.value);
-        items.forEach(item => {
-            if (item.element) {
-                applyScaleToElement(item);
-            }
-        });
-    }
-
-    function resetImageSize() {
-        sizeSelector.value = "1";
-        updateImageSizes();
+        items.forEach(item => { if (item.element) applyScaleToElement(item); });
     }
 
     function applyScaleToElement(item) {
-        // 元の基準サイズ(max 150x200)に対して縮小率を掛ける
         const baseW = item.baseSize.w;
         item.element.style.width = (baseW * currentScale) + "px";
-        // 文字サイズも少し調整（必要なら）
         const nameLabel = item.element.querySelector('.item-name');
         nameLabel.style.fontSize = Math.max(10, 14 * currentScale) + "px";
     }
 
-    // --- 既存の基本機能 ---
+    function resetPlacement() {
+        if(!confirm("配置したすべての画像をリストに戻しますか？")) return;
+        items.forEach(item => {
+            if (item.placed && item.element) {
+                dropZone.removeChild(item.element);
+                item.placed = false;
+                item.element = null;
+            }
+        });
+        renderSidebar();
+    }
+
+    function backToSetup() {
+        if(!confirm("現在の配置が消えますが、画像選択画面に戻りますか？")) return;
+        mainScreen.style.display = 'none';
+        setupScreen.style.display = 'flex';
+    }
 
     for (let i = 0; i < 50; i++) {
         const div = document.createElement('div');
@@ -205,11 +209,6 @@
     }
 
     function toBase64(file) { return new Promise(resolve => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.readAsDataURL(file); }); }
-    function calculateBaseSize(w, h) { 
-        let tw = (w / h) * 200; let th = 200; 
-        if (tw > 150) { tw = 150; th = (h / w) * 150; } 
-        return { w: tw, h: th }; 
-    }
 
     function renderSidebar() {
         sidebarContent.innerHTML = "";
@@ -218,7 +217,7 @@
             container.className = "draggable-item";
             const img = new Image(); img.src = item.src; img.style.width = "100%";
             container.appendChild(img);
-            if(item.name) { const n = document.createElement('div'); n.innerText = item.name; n.style.fontSize = "12px"; n.style.textAlign = "center"; container.appendChild(n); }
+            if(item.name) { const n = document.createElement('div'); n.innerText = item.name; n.style.fontSize = "11px"; n.style.textAlign = "center"; container.appendChild(n); }
             container.onmousedown = (e) => initDrag(e, item, true);
             container.ontouchstart = (e) => initDrag(e, item, true);
             sidebarContent.appendChild(container);
@@ -229,12 +228,13 @@
         e.preventDefault();
         const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
         const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        activeItemData = item;
         if (isNew) {
             const tImg = new Image(); tImg.src = item.src;
             tImg.onload = () => { 
-                item.baseSize = calculateBaseSize(tImg.width, tImg.height);
-                createPlacedElement(item, cx, cy); 
-                startMoving(e, item.element); 
+                item.baseSize = { w: (tImg.width/tImg.height)*200, h: 200 };
+                if(item.baseSize.w > 150) item.baseSize = { w: 150, h: (tImg.height/tImg.width)*150 };
+                createPlacedElement(item, cx, cy); startMoving(e, item.element); 
             };
         } else { startMoving(e, item.element); }
     }
@@ -242,28 +242,19 @@
     function createPlacedElement(item, x, y) {
         const div = document.createElement('div');
         div.className = "placed-item";
-        
         const img = new Image(); img.src = item.src;
         const nameSpan = document.createElement('div'); nameSpan.className = "item-name"; nameSpan.innerText = item.name || "";
-        
         div.appendChild(img); div.appendChild(nameSpan);
         item.element = div;
-
-        // 現在の縮小率を適用
         applyScaleToElement(item);
-
-        div.oncontextmenu = (e) => { e.preventDefault(); item.placed = false; dropZone.removeChild(div); renderSidebar(); };
-        div.onmousedown = (e) => startMoving(e, div);
-        div.ontouchstart = (e) => startMoving(e, div);
-
+        div.onmousedown = (e) => initDrag(e, item, false);
+        div.ontouchstart = (e) => initDrag(e, item, false);
         const rect = dropZone.getBoundingClientRect();
-        // 中心座標を計算
-        const currentW = item.baseSize.w * currentScale;
-        div.style.left = (x - rect.left - currentW/2) + "px";
+        div.style.left = (x - rect.left - (item.baseSize.w*currentScale)/2) + "px";
         div.style.top = (y - rect.top - 50) + "px";
-
         item.placed = true;
-        dropZone.appendChild(div); renderSidebar();
+        dropZone.appendChild(div);
+        renderSidebar();
     }
 
     function startMoving(e, el) {
@@ -274,20 +265,45 @@
         const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
         const r = el.getBoundingClientRect();
         offset.x = cx - r.left; offset.y = cy - r.top;
-        document.addEventListener('mousemove', onMove); document.addEventListener('touchmove', onMove, {passive: false});
-        document.addEventListener('mouseup', onStop); document.addEventListener('touchend', onStop);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('touchmove', onMove, {passive: false});
+        document.addEventListener('mouseup', onStop);
+        document.addEventListener('touchend', onStop);
     }
 
     function onMove(e) {
-        if (!activeItem) return; e.preventDefault();
+        if (!activeItem) return;
+        e.preventDefault();
         const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
         const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
         const r = dropZone.getBoundingClientRect();
         activeItem.style.left = (cx - r.left - offset.x) + "px";
         activeItem.style.top = (cy - r.top - offset.y) + "px";
+
+        // サイドバーの上に来たら色を変える
+        const sRect = sidebar.getBoundingClientRect();
+        if (cx > sRect.left) sidebar.classList.add('drag-over');
+        else sidebar.classList.remove('drag-over');
     }
 
-    function onStop() { activeItem = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('touchmove', onMove); }
+    function onStop(e) {
+        if (!activeItem) return;
+        const cx = e.type.includes('touch') ? e.changedTouches[0].clientX : e.clientX;
+        const sRect = sidebar.getBoundingClientRect();
+
+        // サイドバー領域内で離したら回収
+        if (cx > sRect.left && activeItemData) {
+            dropZone.removeChild(activeItem);
+            activeItemData.placed = false;
+            activeItemData.element = null;
+            renderSidebar();
+        }
+
+        sidebar.classList.remove('drag-over');
+        activeItem = null; activeItemData = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('touchmove', onMove);
+    }
 
     function exportImage() {
         const btn = event.target; btn.innerText = "生成中...";
@@ -298,16 +314,13 @@
     }
 
     async function shareOnX() {
-        const btn = event.target; btn.innerText = "準備中...";
         const canvas = await html2canvas(document.getElementById('export-container'), { useCORS: true, scale: 2 });
         canvas.toBlob(async (blob) => {
             try {
-                const data = [new ClipboardItem({ [blob.type]: blob })];
-                await navigator.clipboard.write(data);
+                await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
                 alert("画像をコピーしました！Xの投稿画面で「貼り付け」してください。");
-            } catch(e) { alert("保存してから手動で添付してください"); }
-            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent("ソフトクリーム・パニック！ #ソフトクリームの機械が壊れて全然止まらない")}`, '_blank');
-            btn.innerText = "Xで共有";
+            } catch(e) { alert("保存してから添付してください"); }
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent("#ソフトクリームの機械が壊れて全然止まらない")}`, '_blank');
         });
     }
 </script>
