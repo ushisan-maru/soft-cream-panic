@@ -105,4 +105,211 @@
         </div>
         <div id="sidebar"><h3>未使用リスト</h3><div id="sidebar-content"></div></div>
     </div>
-    <div
+    <div id="footer">
+        <div class="control-group">
+            <span>画像縮小率:</span>
+            <select id="size-selector" onchange="updateImageSizes()">
+                </select>
+            <button class="btn-sub" onclick="resetImageSize()" style="padding: 8px 12px; font-size: 12px;">100%にリセット</button>
+        </div>
+        <button class="btn-main" onclick="exportImage()">画像保存</button>
+        <button class="btn-x" onclick="shareOnX()">Xで共有</button>
+        <button class="btn-sub" onclick="location.reload()">最初から</button>
+    </div>
+</div>
+
+<script>
+    const setupScreen = document.getElementById('setup-screen');
+    const mainScreen = document.getElementById('main-screen');
+    const inputFields = document.getElementById('input-fields');
+    const sidebarContent = document.getElementById('sidebar-content');
+    const dropZone = document.getElementById('drop-zone');
+    const sizeSelector = document.getElementById('size-selector');
+
+    let items = [];
+    let activeItem = null;
+    let offset = { x: 0, y: 0 };
+    let currentScale = 1.0; // 現在の縮小率
+
+    // 縮小率プルダウンの生成 (10% to 100%, 5% steps)
+    for (let i = 100; i >= 10; i -= 5) {
+        const opt = document.createElement('option');
+        opt.value = i / 100;
+        opt.innerText = i + "%";
+        sizeSelector.appendChild(opt);
+    }
+
+    // 縮小率の更新処理
+    function updateImageSizes() {
+        currentScale = parseFloat(sizeSelector.value);
+        items.forEach(item => {
+            if (item.element) {
+                applyScaleToElement(item);
+            }
+        });
+    }
+
+    function resetImageSize() {
+        sizeSelector.value = "1";
+        updateImageSizes();
+    }
+
+    function applyScaleToElement(item) {
+        // 元の基準サイズ(max 150x200)に対して縮小率を掛ける
+        const baseW = item.baseSize.w;
+        item.element.style.width = (baseW * currentScale) + "px";
+        // 文字サイズも少し調整（必要なら）
+        const nameLabel = item.element.querySelector('.item-name');
+        nameLabel.style.fontSize = Math.max(10, 14 * currentScale) + "px";
+    }
+
+    // --- 既存の基本機能 ---
+
+    for (let i = 0; i < 50; i++) {
+        const div = document.createElement('div');
+        div.className = "input-row";
+        div.innerHTML = `<div class="preview-box" id="prev-box-${i}">No img</div>
+            <div style="display:flex; flex-direction:column; gap:2px;">
+                <input type="file" accept="image/*" id="file-${i}" onchange="previewFile(${i})" style="width:160px; font-size:10px;">
+                <input type="text" placeholder="画像URL" id="url-${i}" onchange="previewUrl(${i})" style="width:154px; font-size:10px;">
+                <input type="text" maxlength="10" placeholder="名前" id="name-${i}" style="width:154px;">
+            </div>`;
+        inputFields.appendChild(div);
+    }
+
+    async function previewFile(index) {
+        const file = document.getElementById(`file-${index}`).files[0];
+        if (file) { const src = await toBase64(file); document.getElementById(`prev-box-${index}`).innerHTML = `<img src="${src}">`; }
+    }
+
+    function previewUrl(index) {
+        const url = document.getElementById(`url-${index}`).value;
+        if (url) { document.getElementById(`prev-box-${index}`).innerHTML = `<img src="${url}" onerror="this.parentElement.innerHTML='Error'">`; }
+    }
+
+    async function startApp() {
+        items = [];
+        for (let i = 0; i < 50; i++) {
+            const file = document.getElementById(`file-${i}`).files[0];
+            const url = document.getElementById(`url-${i}`).value;
+            const name = document.getElementById(`name-${i}`).value;
+            let src = file ? await toBase64(file) : url;
+            if (src) items.push({ id: i, src, name, placed: false, element: null, baseSize: null });
+        }
+        if (items.length === 0) return alert("画像を登録してください");
+        setupScreen.style.display = 'none';
+        mainScreen.style.display = 'flex';
+        const now = new Date();
+        document.getElementById('current-date').innerText = `作成日: ${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+        renderSidebar();
+    }
+
+    function toBase64(file) { return new Promise(resolve => { const reader = new FileReader(); reader.onload = e => resolve(e.target.result); reader.readAsDataURL(file); }); }
+    function calculateBaseSize(w, h) { 
+        let tw = (w / h) * 200; let th = 200; 
+        if (tw > 150) { tw = 150; th = (h / w) * 150; } 
+        return { w: tw, h: th }; 
+    }
+
+    function renderSidebar() {
+        sidebarContent.innerHTML = "";
+        items.filter(item => !item.placed).forEach(item => {
+            const container = document.createElement('div');
+            container.className = "draggable-item";
+            const img = new Image(); img.src = item.src; img.style.width = "100%";
+            container.appendChild(img);
+            if(item.name) { const n = document.createElement('div'); n.innerText = item.name; n.style.fontSize = "12px"; n.style.textAlign = "center"; container.appendChild(n); }
+            container.onmousedown = (e) => initDrag(e, item, true);
+            container.ontouchstart = (e) => initDrag(e, item, true);
+            sidebarContent.appendChild(container);
+        });
+    }
+
+    function initDrag(e, item, isNew) {
+        e.preventDefault();
+        const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        if (isNew) {
+            const tImg = new Image(); tImg.src = item.src;
+            tImg.onload = () => { 
+                item.baseSize = calculateBaseSize(tImg.width, tImg.height);
+                createPlacedElement(item, cx, cy); 
+                startMoving(e, item.element); 
+            };
+        } else { startMoving(e, item.element); }
+    }
+
+    function createPlacedElement(item, x, y) {
+        const div = document.createElement('div');
+        div.className = "placed-item";
+        
+        const img = new Image(); img.src = item.src;
+        const nameSpan = document.createElement('div'); nameSpan.className = "item-name"; nameSpan.innerText = item.name || "";
+        
+        div.appendChild(img); div.appendChild(nameSpan);
+        item.element = div;
+
+        // 現在の縮小率を適用
+        applyScaleToElement(item);
+
+        div.oncontextmenu = (e) => { e.preventDefault(); item.placed = false; dropZone.removeChild(div); renderSidebar(); };
+        div.onmousedown = (e) => startMoving(e, div);
+        div.ontouchstart = (e) => startMoving(e, div);
+
+        const rect = dropZone.getBoundingClientRect();
+        // 中心座標を計算
+        const currentW = item.baseSize.w * currentScale;
+        div.style.left = (x - rect.left - currentW/2) + "px";
+        div.style.top = (y - rect.top - 50) + "px";
+
+        item.placed = true;
+        dropZone.appendChild(div); renderSidebar();
+    }
+
+    function startMoving(e, el) {
+        activeItem = el;
+        let maxZ = 20; document.querySelectorAll('.placed-item').forEach(i => { const z = parseInt(i.style.zIndex) || 20; if(z > maxZ) maxZ = z; });
+        el.style.zIndex = maxZ + 1;
+        const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        const r = el.getBoundingClientRect();
+        offset.x = cx - r.left; offset.y = cy - r.top;
+        document.addEventListener('mousemove', onMove); document.addEventListener('touchmove', onMove, {passive: false});
+        document.addEventListener('mouseup', onStop); document.addEventListener('touchend', onStop);
+    }
+
+    function onMove(e) {
+        if (!activeItem) return; e.preventDefault();
+        const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+        const r = dropZone.getBoundingClientRect();
+        activeItem.style.left = (cx - r.left - offset.x) + "px";
+        activeItem.style.top = (cy - r.top - offset.y) + "px";
+    }
+
+    function onStop() { activeItem = null; document.removeEventListener('mousemove', onMove); document.removeEventListener('touchmove', onMove); }
+
+    function exportImage() {
+        const btn = event.target; btn.innerText = "生成中...";
+        html2canvas(document.getElementById('export-container'), { useCORS: true, backgroundColor: "#ffffff", scale: 2 }).then(canvas => {
+            const a = document.createElement('a'); a.download = 'softcream-panic.png'; a.href = canvas.toDataURL("image/png"); a.click();
+            btn.innerText = "画像保存";
+        });
+    }
+
+    async function shareOnX() {
+        const btn = event.target; btn.innerText = "準備中...";
+        const canvas = await html2canvas(document.getElementById('export-container'), { useCORS: true, scale: 2 });
+        canvas.toBlob(async (blob) => {
+            try {
+                const data = [new ClipboardItem({ [blob.type]: blob })];
+                await navigator.clipboard.write(data);
+                alert("画像をコピーしました！Xの投稿画面で「貼り付け」してください。");
+            } catch(e) { alert("保存してから手動で添付してください"); }
+            window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent("ソフトクリーム・パニック！ #ソフトクリームの機械が壊れて全然止まらない")}`, '_blank');
+            btn.innerText = "Xで共有";
+        });
+    }
+</script>
+</body>
+</html>
